@@ -32,6 +32,8 @@
 #define DEBUG if (1) {} else qDebug
 #endif
 
+#define SOFT_HYPHEN 0xAD
+
 using namespace std;
 
 namespace WebCore {
@@ -125,7 +127,16 @@ const char* currentTextBreakLocaleID()
 
     int textBreakNext(TextBreakIterator* bi)
     {
+        int currPos = bi->position();
         int pos = bi->toNextBoundary();
+
+        // FIXME: The following code can be removed when QT's QTextBoundaryFinder class handles soft hyphen.
+        //        Note that this code will essentially no-op in the case of QTextBoundaryFinder handling soft hyphen.
+        int softHyphenPos = bi->string().indexOf(QChar(SOFT_HYPHEN), currPos);
+        if (bi->type() == QTextBoundaryFinder::Line && softHyphenPos != -1 && currPos < softHyphenPos && softHyphenPos < pos) {
+            pos = softHyphenPos + 1; // skip the soft-hyphen
+            bi->setPosition(pos);
+        }
         DEBUG() << "textBreakNext" << pos;
         return pos;
     }
@@ -134,7 +145,16 @@ const char* currentTextBreakLocaleID()
     {
         bi->setPosition(pos);
         int newpos = bi->toPreviousBoundary();
+
+        // FIXME: The following code can be removed when QT's QTextBoundaryFinder class handles soft hyphen.
+        //        Note that this code will essentially no-op in the case of QTextBoundaryFinder handling soft hyphen.
+        int softHyphenPos = bi->string().indexOf(QChar(SOFT_HYPHEN), newpos);
+        if (bi->type() == QTextBoundaryFinder::Line && softHyphenPos != -1 && newpos < softHyphenPos && softHyphenPos < pos) {
+            newpos = softHyphenPos - 1; // skip the soft-hyphen
+            bi->setPosition(newpos);
+        }
         DEBUG() << "textBreakPreceding" << pos << newpos;
+
         return newpos;
     }
 
@@ -142,6 +162,14 @@ const char* currentTextBreakLocaleID()
     {
         bi->setPosition(pos);
         int newpos = bi->toNextBoundary();
+
+        // FIXME: The following code can be removed when QT's QTextBoundaryFinder class handles soft hyphen.
+        //        Note that this code will essentially no-op in the case of QTextBoundaryFinder handling soft hyphen.
+        int softHyphenPos = bi->string().indexOf(QChar(SOFT_HYPHEN), pos);
+        if (bi->type() == QTextBoundaryFinder::Line && softHyphenPos != -1 && pos < softHyphenPos && softHyphenPos < newpos) {
+            newpos = softHyphenPos + 1; // skip the soft-hyphen
+            bi->setPosition(newpos);
+        }
         DEBUG() << "textBreakFollowing" << pos << newpos;
         return newpos;
     }
